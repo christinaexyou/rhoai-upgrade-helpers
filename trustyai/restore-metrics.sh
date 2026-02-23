@@ -214,8 +214,19 @@ fi
 log_info "Fetching TrustyAI service route..."
 TRUSTYAI_ROUTE=$(oc get route -n "${NAMESPACE}" -l "${ROUTE_LABEL}" -o jsonpath='{.items[0].spec.host}' 2>/dev/null || echo "")
 
+# Fallback: try common alternative labels
 if [[ -z "${TRUSTYAI_ROUTE}" ]]; then
-    log_error "Could not find TrustyAI route in namespace ${NAMESPACE} with label ${ROUTE_LABEL}"
+    TRUSTYAI_ROUTE=$(oc get route -n "${NAMESPACE}" -l "app=trustyai-service" -o jsonpath='{.items[0].spec.host}' 2>/dev/null || echo "")
+fi
+
+# Final fallback: try by name
+if [[ -z "${TRUSTYAI_ROUTE}" ]]; then
+    TRUSTYAI_ROUTE=$(oc get route trustyai-service -n "${NAMESPACE}" -o jsonpath='{.spec.host}' 2>/dev/null || echo "")
+fi
+
+if [[ -z "${TRUSTYAI_ROUTE}" ]]; then
+    log_error "Could not find TrustyAI route in namespace ${NAMESPACE}"
+    log_error "Tried: label ${ROUTE_LABEL}, label app=trustyai-service, name trustyai-service"
     log_error "Please check that the TrustyAI service is deployed and the route exists."
     exit 1
 fi
